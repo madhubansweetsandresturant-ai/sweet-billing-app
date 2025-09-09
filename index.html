@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madhuban Sweets - Billing System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .color-palette {
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --white: #ffffff;
+            --pink: #ec4899;
+            --blue: #3b82f6;
+            --light-blue: #eff6ff;
+            --light-pink: #fdf2f8;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        
+        /* Styles for the thermal printer bill format */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 color-palette">
+
+    <div id="app-container" class="hidden">
+        <!-- Main Application Interface -->
+        <div class="flex flex-col md:flex-row h-screen">
+
+            <!-- Left Panel: Products/Menu -->
+            <div class="w-full md:w-1/2 lg:w-3/5 p-4 flex flex-col bg-light-blue">
+                <header class="flex justify-between items-center mb-4">
+                    <h1 class="text-3xl font-bold text-pink-600">Madhuban Sweets</h1>
+                    <div>
+                         <span id="cashier-email" class="text-gray-600 mr-4"></span>
+                         <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg shadow hover:bg-red-600 transition">Logout</button>
+                    </div>
+                </header>
+                
+                <div class="relative mb-4">
+                    <input type="text" id="search-bar" placeholder="Search for sweets..." class="w-full p-3 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+
+                <div class="flex items-center mb-4">
+                     <button id="add-product-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Add New Item
+                    </button>
+                </div>
+
+                <div id="product-list" class="flex-grow overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Product items will be injected here -->
+                </div>
+            </div>
+
+            <!-- Right Panel: Current Bill -->
+            <div class="w-full md:w-1/2 lg:w-2/5 p-4 bg-white flex flex-col shadow-lg">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Current Bill</h2>
+                <div id="bill-items" class="flex-grow overflow-y-auto">
+                     <p id="empty-bill-message" class="text-gray-500 text-center mt-10">Select items to start a bill.</p>
+                </div>
+                <div class="mt-4 border-t pt-4">
+                    <div class="space-y-2 text-gray-700 mb-4 text-lg">
+                        <div class="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span id="sub-total">₹0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label for="cgst-rate" class="cursor-pointer">CGST (%):</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="cgst-rate" class="w-20 text-right border rounded-md p-1" value="2.5" step="0.5">
+                                <span id="cgst-amount" class="w-24 text-right">₹0.00</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                             <label for="sgst-rate" class="cursor-pointer">SGST (%):</label>
+                             <div class="flex items-center gap-2">
+                                <input type="number" id="sgst-rate" class="w-20 text-right border rounded-md p-1" value="2.5" step="0.5">
+                                <span id="sgst-amount" class="w-24 text-right">₹0.00</span>
+                             </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-3xl font-bold mb-4 border-t-2 border-gray-800 pt-3">
+                        <span>Total:</span>
+                        <span id="grand-total" class="text-blue-600">₹0.00</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                         <button id="clear-bill-btn" class="w-full bg-gray-300 text-gray-700 p-4 rounded-lg font-semibold hover:bg-gray-400 transition">Clear</button>
+                         <button id="generate-bill-btn" class="w-full bg-pink-500 text-white p-4 rounded-lg font-semibold hover:bg-pink-600 transition">Generate & Print</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-container" class="flex items-center justify-center h-screen bg-pink-50">
+        <div class="w-full max-w-md p-8 bg-white rounded-xl shadow-lg">
+            <h1 class="text-4xl font-bold text-pink-600 text-center mb-2">Madhuban Sweets</h1>
+            <p class="text-gray-600 text-center mb-8">Employee Login</p>
+            <div id="login-error" class="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-center hidden"></div>
+            <div class="space-y-6">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="employee@email.com">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="••••••••">
+                </div>
+                <button id="login-btn" class="w-full bg-pink-500 text-white py-3 rounded-lg font-semibold hover:bg-pink-600 transition-transform transform hover:scale-105 shadow-md">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h2 id="modal-title" class="text-2xl font-bold mb-6">Add New Item</h2>
+            <div class="space-y-4">
+                 <div>
+                    <label for="product-name" class="block text-sm font-medium text-gray-700">Item Name</label>
+                    <input type="text" id="product-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                 <div>
+                    <label for="product-price" class="block text-sm font-medium text-gray-700">Price</label>
+                    <input type="number" id="product-price" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                 <div>
+                    <label for="product-unit" class="block text-sm font-medium text-gray-700">Unit (e.g., kg, piece)</label>
+                    <input type="text" id="product-unit" placeholder="kg" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end gap-4">
+                <button id="cancel-product-btn" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                <button id="save-product-btn" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bill Print Area (Hidden) -->
+    <div id="print-area"></div>
+
+    <script type="module">
+        // --- Firebase SDK Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyACTtOVjFLTTgRlEJAWL4efpa_c1qFF0pk",
+  authDomain: "madhuban-sweets-billing-1bc59.firebaseapp.com",
+  projectId: "madhuban-sweets-billing-1bc59",
+  storageBucket: "madhuban-sweets-billing-1bc59.firebasestorage.app",
+  messagingSenderId: "995171700931",
+  appId: "1:995171700931:web:bd4f53e0dc72476f415276"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+        // --- Firebase Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Global State ---
+        let products = [];
+        let currentBill = [];
+        let editingProductId = null;
+
+        // --- UI Element Refs ---
+        const loginContainer = document.getElementById('login-container'), appContainer = document.getElementById('app-container');
+        const loginBtn = document.getElementById('login-btn'), logoutBtn = document.getElementById('logout-btn');
+        const emailInput = document.getElementById('email'), passwordInput = document.getElementById('password'), loginError = document.getElementById('login-error');
+        const cashierEmail = document.getElementById('cashier-email'), productList = document.getElementById('product-list');
+        const billItems = document.getElementById('bill-items'), emptyBillMessage = document.getElementById('empty-bill-message');
+        const searchBar = document.getElementById('search-bar'), clearBillBtn = document.getElementById('clear-bill-btn'), generateBillBtn = document.getElementById('generate-bill-btn');
+        const productModal = document.getElementById('product-modal'), addProductBtn = document.getElementById('add-product-btn'), cancelProductBtn = document.getElementById('cancel-product-btn');
+        const saveProductBtn = document.getElementById('save-product-btn'), modalTitle = document.getElementById('modal-title'), productNameInput = document.getElementById('product-name');
+        const productPriceInput = document.getElementById('product-price'), productUnitInput = document.getElementById('product-unit');
+        
+        // --- NEW: Tax and Total UI Refs ---
+        const subTotalEl = document.getElementById('sub-total');
+        const cgstRateInput = document.getElementById('cgst-rate');
+        const sgstRateInput = document.getElementById('sgst-rate');
+        const cgstAmountEl = document.getElementById('cgst-amount');
+        const sgstAmountEl = document.getElementById('sgst-amount');
+        const grandTotalEl = document.getElementById('grand-total');
+
+        // --- Authentication Logic ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                cashierEmail.textContent = user.email;
+                fetchProducts();
+            } else {
+                loginContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            }
+        });
+        loginBtn.addEventListener('click', () => signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value).catch(error => {
+            loginError.textContent = error.message;
+            loginError.classList.remove('hidden');
+        }));
+        logoutBtn.addEventListener('click', () => signOut(auth));
+
+        // --- Product Management ---
+        function fetchProducts() {
+            onSnapshot(collection(db, 'products'), (snapshot) => {
+                products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderProducts();
+            });
+        }
+        function renderProducts(filter = '') {
+            const lowercasedFilter = filter.toLowerCase();
+            const filteredProducts = products.filter(p => p.name.toLowerCase().includes(lowercasedFilter));
+            productList.innerHTML = '';
+            if (filteredProducts.length === 0) {
+                 productList.innerHTML = `<p class="text-gray-500 col-span-full text-center">No products found.</p>`;
+                 return;
+            }
+            filteredProducts.forEach(product => {
+                const productEl = document.createElement('div');
+                productEl.className = 'bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all relative';
+                productEl.innerHTML = `
+                    <h3 class="font-bold text-lg text-gray-800">${product.name}</h3>
+                    <p class="text-yellow-600 font-semibold">₹${product.price.toFixed(2)} / ${product.unit}</p>
+                    <div class="absolute top-2 right-2 flex gap-1">
+                        <button class="edit-product-btn text-blue-500 hover:text-blue-700 w-6 h-6 rounded-full flex items-center justify-center" data-id="${product.id}"><i class="fas fa-edit"></i></button>
+                        <button class="delete-product-btn text-red-500 hover:text-red-700 w-6 h-6 rounded-full flex items-center justify-center" data-id="${product.id}"><i class="fas fa-trash"></i></button>
+                    </div>`;
+                productEl.addEventListener('click', (e) => { if (!e.target.closest('button')) addToBill(product.id); });
+                productEl.querySelector('.edit-product-btn').addEventListener('click', () => openEditModal(product));
+                productEl.querySelector('.delete-product-btn').addEventListener('click', () => deleteProduct(product.id, product.name));
+                productList.appendChild(productEl);
+            });
+        }
+        searchBar.addEventListener('input', () => renderProducts(searchBar.value));
+        function openAddModal() { editingProductId = null; modalTitle.textContent = 'Add New Item'; productNameInput.value = ''; productPriceInput.value = ''; productUnitInput.value = 'kg'; productModal.classList.remove('hidden'); }
+        function openEditModal(product) { editingProductId = product.id; modalTitle.textContent = 'Edit Item'; productNameInput.value = product.name; productPriceInput.value = product.price; productUnitInput.value = product.unit; productModal.classList.remove('hidden'); }
+        function closeModal() { productModal.classList.add('hidden'); }
+        addProductBtn.addEventListener('click', openAddModal);
+        cancelProductBtn.addEventListener('click', closeModal);
+        saveProductBtn.addEventListener('click', async () => {
+            const name = productNameInput.value.trim(), price = parseFloat(productPriceInput.value), unit = productUnitInput.value.trim();
+            if (!name || isNaN(price) || price <= 0 || !unit) { alert('Please fill all fields correctly.'); return; }
+            try {
+                if (editingProductId) await setDoc(doc(db, 'products', editingProductId), { name, price, unit });
+                else await addDoc(collection(db, 'products'), { name, price, unit });
+                closeModal();
+            } catch (error) { console.error("Error saving product: ", error); alert("Could not save product."); }
+        });
+        async function deleteProduct(id, name) { if (confirm(`Delete ${name}?`)) { try { await deleteDoc(doc(db, 'products', id)); } catch(e){ console.error(e); alert("Could not delete."); } } }
+
+        // --- Billing Logic ---
+        function addToBill(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            const existingItem = currentBill.find(item => item.id === productId);
+            if (existingItem) existingItem.quantity++; else currentBill.push({ ...product, quantity: 1 });
+            renderBill();
+        }
+        function updateQuantity(productId, newQuantity) {
+            const item = currentBill.find(i => i.id === productId);
+            if (item) item.quantity = newQuantity;
+            if (item.quantity <= 0) currentBill = currentBill.filter(i => i.id !== productId);
+            renderBill();
+        }
+        function renderBill() {
+            billItems.innerHTML = '';
+            if (currentBill.length === 0) {
+                emptyBillMessage.classList.remove('hidden');
+                subTotalEl.textContent = '₹0.00';
+                cgstAmountEl.textContent = '₹0.00';
+                sgstAmountEl.textContent = '₹0.00';
+                grandTotalEl.textContent = '₹0.00';
+                return;
+            }
+            emptyBillMessage.classList.add('hidden');
+            let subTotal = 0;
+            currentBill.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                subTotal += itemTotal;
+                const billItemEl = document.createElement('div');
+                billItemEl.className = 'flex justify-between items-center p-3 bg-light-pink rounded-lg mb-2';
+                billItemEl.innerHTML = `
+                    <div><p class="font-semibold text-gray-800">${item.name}</p><p class="text-sm text-gray-500">₹${item.price.toFixed(2)} / ${item.unit}</p></div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" min="1" value="${item.quantity}" class="w-16 text-center border rounded-md p-1 quantity-input" data-id="${item.id}">
+                        <p class="w-24 text-right font-semibold">₹${itemTotal.toFixed(2)}</p>
+                        <button class="remove-item-btn text-red-500 hover:text-red-700" data-id="${item.id}"><i class="fas fa-times-circle"></i></button>
+                    </div>`;
+                billItems.appendChild(billItemEl);
+            });
+            
+            const cgstRate = parseFloat(cgstRateInput.value) || 0;
+            const sgstRate = parseFloat(sgstRateInput.value) || 0;
+            const cgstAmount = subTotal * (cgstRate / 100);
+            const sgstAmount = subTotal * (sgstRate / 100);
+            const grandTotal = subTotal + cgstAmount + sgstAmount;
+            
+            subTotalEl.textContent = `₹${subTotal.toFixed(2)}`;
+            cgstAmountEl.textContent = `₹${cgstAmount.toFixed(2)}`;
+            sgstAmountEl.textContent = `₹${sgstAmount.toFixed(2)}`;
+            grandTotalEl.textContent = `₹${grandTotal.toFixed(2)}`;
+            
+            document.querySelectorAll('.quantity-input').forEach(i => i.addEventListener('change', (e) => updateQuantity(e.target.dataset.id, parseInt(e.target.value))));
+            document.querySelectorAll('.remove-item-btn').forEach(b => b.addEventListener('click', (e) => updateQuantity(e.currentTarget.dataset.id, 0)));
+        }
+        cgstRateInput.addEventListener('input', renderBill);
+        sgstRateInput.addEventListener('input', renderBill);
+        clearBillBtn.addEventListener('click', () => { currentBill = []; renderBill(); });
+        
+        generateBillBtn.addEventListener('click', async () => {
+            if (currentBill.length === 0) { alert("Cannot generate an empty bill."); return; }
+
+            const subTotal = currentBill.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const cgstRate = parseFloat(cgstRateInput.value) || 0;
+            const sgstRate = parseFloat(sgstRateInput.value) || 0;
+            const cgstAmount = subTotal * (cgstRate / 100);
+            const sgstAmount = subTotal * (sgstRate / 100);
+            const grandTotal = subTotal + cgstAmount + sgstAmount;
+            
+            let savedBillRef;
+            try {
+                savedBillRef = await addDoc(collection(db, 'bills'), {
+                    cashierId: auth.currentUser.uid,
+                    cashierEmail: auth.currentUser.email,
+                    createdAt: serverTimestamp(),
+                    items: currentBill,
+                    subTotal, cgstRate, sgstRate, cgstAmount, sgstAmount, grandTotal
+                });
+            } catch (error) { console.error("Error saving bill: ", error); alert("Could not save bill to database."); return; }
+
+            const now = new Date();
+            const printContent = `
+                <div style="font-family: 'Courier New', monospace; width: 288px; font-size: 12px; color: black; padding: 5px;">
+                    <h2 style="font-size: 14px; font-weight: bold; text-align: center; margin: 0; padding: 0;">MADHUBAN SWEETS AND RESTURANT</h2>
+                    <p style="text-align: center; font-size: 10px; margin: 2px 0;">NEAR CHOUDHARY DHRAM KANTA, OPPOSITE BHOOTHNATH</p>
+                    <p style="text-align: center; font-size: 10px; margin: 2px 0;">TEMPLE, GAJNER ROAD , CHUNGI CHOWKI , BIKANER</p>
+                    <p style="text-align: center; font-size: 10px; font-weight: bold; margin-top: 5px;">GSTIN: YOUR_GST_NUMBER_HERE</p>
+                    <p style="text-align: center; font-weight: bold; border-top: 1px dashed; border-bottom: 1px dashed; padding: 2px 0; margin: 5px 0;">TAX INVOICE</p>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                        <span>Bill: ${savedBillRef.id.substring(0, 10)}</span>
+                        <span>${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <hr style="border: none; border-top: 1px dashed; margin: 5px 0;">
+                    <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left;">
+                                <th style="padding: 2px 0; width: 45%;">Item</th>
+                                <th style="padding: 2px 0; text-align: center;">Qty</th>
+                                <th style="padding: 2px 0; text-align: right;">Rate</th>
+                                <th style="padding: 2px 0; text-align: right;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${currentBill.map(item => `
+                                <tr>
+                                    <td style="padding: 1px 0;">${item.name}</td>
+                                    <td style="padding: 1px 0; text-align: center;">${item.quantity}${item.unit.replace('piece', 'pc')}</td>
+                                    <td style="padding: 1px 0; text-align: right;">${item.price.toFixed(2)}</td>
+                                    <td style="padding: 1px 0; text-align: right;">${(item.price * item.quantity).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <hr style="border: none; border-top: 1px dashed; margin: 5px 0;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <tbody>
+                             <tr><td style="text-align: right; padding-right: 10px;">Sub Total:</td><td style="text-align: right;">₹${subTotal.toFixed(2)}</td></tr>
+                             <tr><td style="text-align: right; padding-right: 10px;">CGST @ ${cgstRate}%:</td><td style="text-align: right;">₹${cgstAmount.toFixed(2)}</td></tr>
+                             <tr><td style="text-align: right; padding-right: 10px;">SGST @ ${sgstRate}%:</td><td style="text-align: right;">₹${sgstAmount.toFixed(2)}</td></tr>
+                        </tbody>
+                    </table>
+                    <hr style="border: none; border-top: 1px dashed; margin: 5px 0;">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px;">
+                        <span>GRAND TOTAL:</span>
+                        <span>₹${grandTotal.toFixed(2)}</span>
+                    </div>
+                    <hr style="border: none; border-top: 1px dashed; margin: 5px 0;">
+                    <p style="text-align: center; font-size: 10px; margin-top: 10px;">Thank You! Visit Again!</p>
+                </div>`;
+            document.getElementById('print-area').innerHTML = printContent;
+            window.print();
+            currentBill = [];
+            renderBill();
+        });
+    </script>
+</body>
+</html>
+
