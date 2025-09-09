@@ -167,24 +167,21 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-// Import the functions you need from the SDKs you need
+         // --- IMPORTANT: Paste your Firebase config here ---
+        // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
-
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyACTtOVjFLTTgRlEJAWL4efpa_c1qFF0pk",
-  authDomain: "madhuban-sweets-billing-1bc59.firebaseapp.com",
-  projectId: "madhuban-sweets-billing-1bc59",
-  storageBucket: "madhuban-sweets-billing-1bc59.firebasestorage.app",
-  messagingSenderId: "995171700931",
-  appId: "1:995171700931:web:bd4f53e0dc72476f415276"
+  apiKey: "AIzaSyB51dHbVtAYcz8Um1ERiqlC3Hnv6_BNwqQ",
+  authDomain: "madhuban-sweets-billing-a1be8.firebaseapp.com",
+  projectId: "madhuban-sweets-billing-a1be8",
+  storageBucket: "madhuban-sweets-billing-a1be8.firebasestorage.app",
+  messagingSenderId: "202327593122",
+  appId: "1:202327593122:web:681774bcc819d4d524c7fb"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
         // --- Firebase Initialization ---
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
